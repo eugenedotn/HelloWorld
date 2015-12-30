@@ -1,0 +1,84 @@
+---
+- hosts: nginx
+  remote_user: vagrant
+  sudo: yes
+  sudo_user: root
+  tasks:
+    - name: Install nginx web server
+      apt: 
+        pkg: nginx 
+        state: present
+      notify:
+        - restart nginx
+    - name: Update config
+      copy:
+        src: hello_app
+        dest: /etc/nginx/sites-available/hello_app
+    - name: Enable Site
+      command: ln -s /etc/nginx/sites-available/hello_app /etc/nginx/sites-enabled/hello_app      
+    - name: Disable default site
+      file:
+        path: /etc/nginx/sites-available/default
+        state: absent
+  handlers:
+    - name: restart nginx
+      service: 
+        name: nginx 
+        state: restarted
+
+- hosts: python
+  remote_user: vagrant
+  sudo: yes
+  tasks: 
+    - name: Install Git
+      apt:
+        pkg: git
+        state: present  
+    - name: Install Python app
+      git: repo=https://github.com/eugenedotn/hello_devops.git dest=/home/vagrant/app/
+    - name: Update permissions
+      file:
+        path: /home/vagrant/app/
+        owner: vagrant
+        group: vagrant
+        recurse: yes
+    - name: Install PIP
+      apt:
+        pkg: python-pip
+        state: present
+    - name: Install Django
+      pip: 
+        requirements: /vagrant/requirements.txt
+    - name: Install Apache web-server
+      apt:
+        pkg: apache2
+        update_cache: yes
+        state: latest
+      notify:
+        - restart apache2
+    - name: Install mod_wsgi
+      apt:
+        pkg: libapache2-mod-wsgi 
+        state: present    
+    - name: Configure Apache
+      copy:
+        src: django.conf
+        dest: /etc/apache2/sites-enabled/django.conf  
+      notify:
+       - restart apache2
+    - name: Tune Apache to work with Nginx
+      lineinfile:
+        dest: /etc/apache2/ports.conf
+        regexp: ^Listen 80
+        line: Listen 8080
+    - name: Tune Apache 2
+      copy:
+        src: apache2.conf
+        dest: /etc/apache2/apache2.conf  
+      notify:
+       - restart apache2
+  handlers:
+    - name: restart apache2
+      service: 
+        name: apache2 
+        state: restarted     

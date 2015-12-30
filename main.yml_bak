@@ -1,0 +1,21 @@
+- name: Install Apache web-server
+      apt:
+        pkg: apache2
+        update_cache: yes
+        state: latest
+      notify:
+        - restart apache2
+    - name: Configure Apache
+      template: 
+        src: httpd.conf
+        dest: /etc/apache2/apache2.conf
+      template:
+        src: django.conf
+        dest: /etc/apache2/sites-enabled/django.conf  
+      notify:
+       - restart apache2
+  handlers:
+    - name: restart apache2
+      service: 
+        name: apache2 
+        state: restarted     
